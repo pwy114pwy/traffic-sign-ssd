@@ -1,0 +1,30 @@
+# 基础依赖
+numpy>=1.21.0
+pandas>=1.3.0
+Pillow>=8.3.0
+opencv-python>=4.5.0
+
+# PyTorch 和深度学习依赖（修正：pytorch → torch）
+torch>=2.0.0
+torchvision>=0.15.0
+torchsummary>=1.5.1
+
+# 目标检测框架
+pycocotools>=2.0.2
+# 注意：ssd-pytorch 不是标准 PyPI 包，建议通过 GitHub 安装（见下方说明）
+
+# Flask Web 框架
+flask>=2.0.0
+flask-wtf>=0.15.0
+
+# 工具库
+matplotlib>=3.4.0
+seaborn>=0.11.0
+json5>=0.9.6
+argparse>=1.4.0
+pathlib>=1.0.1
+
+# 开发工具
+pytest>=6.2.0
+black>=21.0.0
+flake8>=3.9.0

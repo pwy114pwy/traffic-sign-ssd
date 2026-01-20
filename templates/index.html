@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交通标志检测系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .upload-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .result-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .image-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .image-box {
+            margin: 10px;
+            text-align: center;
+        }
+        img {
+            max-width: 400px;
+            max-height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        .detection-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #333;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>交通标志检测系统</h1>
+        
+        <div class="upload-section">
+            <h2>上传图像</h2>
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <input type="file" name="image" accept="image/*" required>
+                </div>
+                <div class="form-group">
+                    <label for="conf_threshold">置信度阈值:</label>
+                    <input type="number" id="conf_threshold" name="conf_threshold" min="0" max="1" step="0.01" value="0.5">
+                </div>
+                <button type="submit">检测</button>
+            </form>
+        </div>
+        
+        {% if error %}
+        <div class="result-section">
+            <div class="error">{{ error }}</div>
+        </div>
+        {% endif %}
+        
+        {% if original_image and result_image %}
+        <div class="result-section">
+            <h2>检测结果</h2>
+            <div class="image-container">
+                <div class="image-box">
+                    <h3>原始图像</h3>
+                    <img src="{{ original_image }}" alt="原始图像">
+                </div>
+                <div class="image-box">
+                    <h3>检测结果</h3>
+                    <img src="{{ result_image }}" alt="检测结果">
+                    <div class="detection-info">
+                        <p>检测到 {{ detection_count }} 个交通标志</p>
+                        {% for detection in detections %}
+                        <p>{{ detection.class_name }}: {{ detection.score|round(2) }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
