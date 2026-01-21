@@ -1,2 +1,4 @@
 /.conda/**/*  
-/datasets/**/*  
+/datasets/GTSRB/**/*
+/static/**/*
+/models/saved/**/*

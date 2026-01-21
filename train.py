@@ -6,10 +6,15 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 import argparse
 import time
-
+# 导入模块
 from models.ssd import build_ssd
 from models.utils import AnchorBoxes
 from datasets.dataset import GTSRBDataset, get_transform
+
+# 定义全局collate函数
+def collate_fn(batch):
+    """自定义collate函数，用于处理批量数据"""
+    return tuple(zip(*batch))
 
 class SSDLoss(nn.Module):
     """SSD损失函数"""
@@ -190,10 +195,6 @@ def train(args):
         set_name="val",
         transform=get_transform(train=False)
     )
-    
-    # 定义collate函数
-    def collate_fn(batch):
-        return tuple(zip(*batch))
     
     # 创建数据加载器
     train_loader = DataLoader(

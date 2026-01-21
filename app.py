@@ -20,7 +20,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # 加载模型
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-NUM_CLASSES = 43
+NUM_CLASSES = 44  # 与训练时使用的类别数量保持一致（包含背景类）
 MODEL_PATH = "models/saved/best_ssd_model.pth"  # 默认模型路径
 
 # 加载交通标志类别名称
@@ -36,6 +36,8 @@ CLASS_NAMES = [
 ]
 
 # 加载模型函数
+
+
 def load_model(model_path=MODEL_PATH):
     """加载训练好的SSD模型"""
     model = build_ssd(num_classes=NUM_CLASSES)
@@ -43,6 +45,7 @@ def load_model(model_path=MODEL_PATH):
     model.to(DEVICE)
     model.eval()
     return model
+
 
 # 预加载模型
 try:
@@ -56,6 +59,7 @@ except Exception as e:
     print(f"模型加载失败: {e}")
     model = None
 
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     """首页路由"""
@@ -63,52 +67,60 @@ def index():
         # 检查是否有文件上传
         if 'image' not in request.files:
             return render_template('index.html', error='没有上传图像')
-        
+
         image_file = request.files['image']
-        
+
         # 检查文件是否为空
         if image_file.filename == '':
             return render_template('index.html', error='没有选择图像文件')
-        
+
         # 检查文件类型
         if not image_file.filename.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')):
             return render_template('index.html', error='仅支持JPG、JPEG、PNG和BMP格式的图像')
-        
+
         try:
             # 生成唯一的文件名
-            filename = str(uuid.uuid4()) + os.path.splitext(image_file.filename)[1]
+            filename = str(uuid.uuid4()) + \
+                os.path.splitext(image_file.filename)[1]
             image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            
+
             # 保存上传的图像
             image_file.save(image_path)
-            
+
             # 读取图像
             image = Image.open(image_path).convert('RGB')
             original_size = image.size
-            
+
             # 预处理图像
             processed_image = transform(image).unsqueeze(0).to(DEVICE)
-            
+
             # 执行推理
             with torch.no_grad():
                 predicted_scores, predicted_locations = model(processed_image)
                 conf_threshold = float(request.form.get('conf_threshold', 0.5))
-                detections = detect(predicted_locations, predicted_scores, anchors, 
-                                   min_score=conf_threshold, 
-                                   max_overlap=0.45, 
-                                   top_k=200)
-            
-            # 可视化检测结果
-            result_image = visualize_detections(processed_image[0], detections[0], original_size, 
-                                               class_names=CLASS_NAMES, threshold=conf_threshold)
-            
+                detections = detect(predicted_locations, predicted_scores, anchors,
+                                    min_score=conf_threshold,
+                                    max_overlap=0.45,
+                                    top_k=200)
+
+            # 可视化检测结果 - 使用原始图像
+            result_image = visualize_detections(image, detections[0], original_size,
+                                                class_names=CLASS_NAMES, threshold=conf_threshold)
+            print(f"检测到 {len(detections[0])} 个候选框")
+            for i, detection in enumerate(detections[0]):
+                if detection['score'] >= conf_threshold:
+                    print(
+                        f"检测 {i+1}: 类别 {detection['label']} (索引 {detection['label']-1}), 分数 {detection['score']:.2f}")
+
             # 保存结果图像
             result_filename = f"result_{filename}"
-            result_path = os.path.join(app.config['UPLOAD_FOLDER'], result_filename)
+            result_path = os.path.join(
+                app.config['UPLOAD_FOLDER'], result_filename)
             result_image.save(result_path)
-            
+
             # 准备检测信息
-            detection_count = len([d for d in detections[0] if d['score'] >= conf_threshold])
+            detection_count = len(
+                [d for d in detections[0] if d['score'] >= conf_threshold])
             detection_info = []
             for detection in detections[0]:
                 if detection['score'] >= conf_threshold:
@@ -116,76 +128,91 @@ def index():
                         'class_name': CLASS_NAMES[detection['label'] - 1],
                         'score': detection['score']
                     })
-            
+
             # 返回结果页面
-            return render_template('index.html', 
-                                  original_image=url_for('static', filename=f'images/{filename}'),
-                                  result_image=url_for('static', filename=f'images/{result_filename}'),
-                                  detection_count=detection_count,
-                                  detections=detection_info)
-            
+            return render_template('index.html',
+                                   original_image=url_for(
+                                       'static', filename=f'images/{filename}'),
+                                   result_image=url_for(
+                                       'static', filename=f'images/{result_filename}'),
+                                   detection_count=detection_count,
+                                   detections=detection_info)
+
         except Exception as e:
             return render_template('index.html', error=f'处理图像时出错: {str(e)}')
-    
+
     # GET请求返回首页
     return render_template('index.html')
+
 
 def visualize_detections(image, detections, original_size, class_names=None, threshold=0.5):
     """可视化检测结果"""
     # 如果没有提供类别名称，使用默认名称
     if class_names is None:
         class_names = [f"class_{i}" for i in range(43)]
-    
-    # 将图像转换回PIL格式以便绘制
+
+    # 确保图像是PIL格式
     if isinstance(image, torch.Tensor):
+        # 如果是张量，转换为PIL图像
         image = image.permute(1, 2, 0).cpu().numpy()
+        # 反归一化
+        mean = np.array([0.485, 0.456, 0.406])
+        std = np.array([0.229, 0.224, 0.225])
+        image = std * image + mean
+        image = np.clip(image, 0, 1)
         image = (image * 255).astype(np.uint8)
         image = Image.fromarray(image)
-    
+    else:
+        # 如果是PIL图像，复制一份以避免修改原图
+        image = image.copy()
+
     # 调整图像大小到原始尺寸
-    image = image.resize(original_size)
-    
+    if image.size != original_size:
+        image = image.resize(original_size)
+
     # 创建绘图对象
     from PIL import ImageDraw, ImageFont
     draw = ImageDraw.Draw(image)
-    
+
     # 加载字体
     try:
         font = ImageFont.truetype("arial.ttf", 12)
     except:
         font = ImageFont.load_default()
-    
+
     # 绘制检测结果
     for detection in detections:
         if detection["score"] < threshold:
             continue
-        
+
         box = detection["box"]
         label = detection["label"]
         score = detection["score"]
-        
+
         # 转换归一化坐标到图像坐标
         x1 = int(box[0] * original_size[0])
         y1 = int(box[1] * original_size[1])
         x2 = int(box[2] * original_size[0])
         y2 = int(box[3] * original_size[1])
-        
+
         # 绘制边界框
         draw.rectangle([x1, y1, x2, y2], outline=(0, 255, 0), width=2)
-        
+
         # 绘制标签和分数
         class_name = class_names[label - 1]  # 减1是因为背景类是0
         text = f"{class_name}: {score:.2f}"
         text_bbox = draw.textbbox((x1, y1 - 15), text, font=font)
         draw.rectangle(text_bbox, fill=(0, 255, 0))
         draw.text((x1, y1 - 15), text, fill=(0, 0, 0), font=font)
-    
+
     return image
+
 
 @app.route('/static/images/<filename>')
 def serve_image(filename):
     """提供静态图像文件"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
