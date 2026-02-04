@@ -125,6 +125,7 @@ def convert_gtsrb_to_coco(csv_path, img_base_dir, output_json_path, output_img_d
     print(f"标注保存到: {output_json_path}")
 
 def main():
+    # 以下是在本地训练的路径
     # 项目根目录
     project_root = Path(__file__).parent
     
@@ -155,6 +156,34 @@ def main():
     )
     
     print("\n✅ 转换完成!")
+
+    # 以下是在服务器上训练的路径
+    # GTSRB数据集路径
+    # gtsrb_dir = "/kaggle/input/gtsrb-german-traffic-sign"
+    
+    # # 输出目录
+    # output_dir = "/content/traffic-sign-ssd/datasets/GTSRB"
+    # # 转换训练集
+    # print("正在转换训练集...")
+    # convert_gtsrb_to_coco(
+    #     csv_path=str(gtsrb_dir +"/"+ "Train.csv"),
+    #     img_base_dir=str(gtsrb_dir),
+    #     output_json_path=str(output_dir +"/"+ "annotations" +"/"+ "train.json"),
+    #     output_img_dir=str(output_dir +"/"+ "images" +"/"+ "train"),
+    #     set_name="train"
+    # )
+    
+    # # 转换测试集
+    # print("\n正在转换测试集...")
+    # convert_gtsrb_to_coco(
+    #     csv_path=str(gtsrb_dir +"/"+ "Test.csv"),
+    #     img_base_dir=str(gtsrb_dir),
+    #     output_json_path=str(output_dir +"/"+ "annotations" +"/"+ "val.json"),
+    #     output_img_dir=str(output_dir +"/"+ "images" +"/"+ "val"),
+    #     set_name="val"
+    # )
+    
+    # print("\n✅ 转换完成!")
 
 if __name__ == "__main__":
     main()

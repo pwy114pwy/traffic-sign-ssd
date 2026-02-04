@@ -1,4 +1,14 @@
 /.conda/**/*  
-/datasets/GTSRB/**/*
+# 1. 忽略 GTSRB 下的所有内容
+datasets/GTSRB/**
+
+# 2. 但不要忽略 annotations 文件夹本身（允许 Git 进入该目录）
+!datasets/GTSRB/annotations/
+
+# 3. 忽略 annotations 文件夹下的所有内容
+datasets/GTSRB/annotations/*
+
+# 4. 唯独把 .gitkeep 排除在外（不忽略它）
+!datasets/GTSRB/annotations/.gitkeep
 /static/**/*
 /models/saved/**/*
