@@ -66,17 +66,32 @@ class GTSRBDataset(Dataset):
         is_crowds = []
         
         for annotation in annotations:
-            bbox = annotation["bbox"]  # [x1, y1, width, height]
-            boxes.append(bbox)
+            # COCO格式: [x, y, width, height] (绝对像素坐标)
+            # 需要转换为: [x1, y1, x2, y2] (归一化坐标 [0, 1])
+            x, y, w, h = annotation["bbox"]
+            
+            # 转换为 [x1, y1, x2, y2] 并归一化
+            x1 = x / width
+            y1 = y / height
+            x2 = (x + w) / width
+            y2 = (y + h) / height
+            
+            # 确保坐标在有效范围内 [0, 1]
+            x1 = max(0.0, min(1.0, x1))
+            y1 = max(0.0, min(1.0, y1))
+            x2 = max(0.0, min(1.0, x2))
+            y2 = max(0.0, min(1.0, y2))
+            
+            boxes.append([x1, y1, x2, y2])
             labels.append(annotation["category_id"])
             areas.append(annotation["area"])
             is_crowds.append(annotation["iscrowd"])
         
         # 转换为numpy数组
-        boxes = np.array(boxes, dtype=np.float32)
-        labels = np.array(labels, dtype=np.int64)
-        areas = np.array(areas, dtype=np.float32)
-        is_crowds = np.array(is_crowds, dtype=np.int64)
+        boxes = np.array(boxes, dtype=np.float32) if boxes else np.zeros((0, 4), dtype=np.float32)
+        labels = np.array(labels, dtype=np.int64) if labels else np.zeros((0,), dtype=np.int64)
+        areas = np.array(areas, dtype=np.float32) if areas else np.zeros((0,), dtype=np.float32)
+        is_crowds = np.array(is_crowds, dtype=np.int64) if is_crowds else np.zeros((0,), dtype=np.int64)
         
         # 转换为PyTorch张量
         boxes = torch.as_tensor(boxes, dtype=torch.float32)
@@ -101,16 +116,20 @@ class GTSRBDataset(Dataset):
         return image, target
 
 def get_transform(train=True, size=(300, 300)):
-    """获取图像变换"""
+    """获取图像变换
+    
+    注意: 暂时移除了RandomHorizontalFlip和ColorJitter等数据增强,
+    因为这些变换需要同步调整边界框坐标。
+    修复边界框问题并验证后,可以重新添加支持边界框变换的数据增强。
+    """
     transforms_list = [
         transforms.Resize(size),  # 调整所有图像到相同尺寸
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ]
     
-    if train:
-        # 训练时的变换
-        transforms_list.insert(1, transforms.RandomHorizontalFlip(0.5))
-        transforms_list.insert(2, transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1))
+    # TODO: 后续可以添加支持边界框变换的数据增强
+    # if train:
+    #     transforms_list.insert(1, transforms.ColorJitter(brightness=0.2, contrast=0.2))
     
     return transforms.Compose(transforms_list)
